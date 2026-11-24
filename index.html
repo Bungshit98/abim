@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Invoice Transwisata</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@0.383.0/dist/umd/lucide.min.js"></script>
+    <!-- html2canvas & jsPDF untuk Export langsung ke JPG dan PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="app.css">
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 no-print"></div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print shadow-sm">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+            <!-- Brand / Judul App -->
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-md shrink-0">
+                    <i data-lucide="bus" class="w-5 h-5"></i>
+                </div>
+                <div class="truncate">
+                    <h1 class="font-display font-bold text-slate-900 text-sm sm:text-lg leading-tight truncate">Transwisata Invoice</h1>
+                    <p class="text-[11px] text-slate-500 hidden sm:block">Sistem Penagihan Sewa Armada & Paket Wisata</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <!-- Tombol Toggle Preview khusus Mobile -->
+                <button id="btn-mobile-toggle" onclick="toggleMobileView()" class="lg:hidden inline-flex items-center gap-1.5 px-2.5 py-2 text-xs sm:text-sm font-semibold rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    <span id="mobile-toggle-text">Preview</span>
+                </button>
+
+                <!-- Tombol Buat Invoice Baru -->
+                <button onclick="createNewInvoice()" class="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition" title="Reset form & buat nomor invoice baru">
+                    <i data-lucide="file-plus-2" class="w-4 h-4 text-blue-600"></i>
+                    <span class="hidden md:inline">Invoice Baru</span>
+                </button>
+
+                <!-- Tombol Simpan Profil Perusahaan -->
+                <button onclick="saveCompanyProfile()" class="inline-flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-sm font-medium rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition shadow-sm" title="Simpan pengaturan perusahaan di browser">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span class="hidden md:inline">Simpan Profil</span>
+                </button>
+
+                <!-- Dropdown Opsi Cetak / Export (Print, PDF, JPG) -->
+                <div class="relative" id="export-dropdown-wrapper">
+                    <button onclick="toggleExportMenu()" class="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 text-xs sm:text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-md shadow-blue-600/20">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        <span>Cetak / Export</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                    </button>
+
+                    <!-- Menu Pilihan Format -->
+                    <div id="export-menu" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-white shadow-xl border border-slate-200 py-1.5 z-50">
+                        <button onclick="printInvoice(); toggleExportMenu(false);" class="w-full px-4 py-2.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2.5 transition">
+                            <i data-lucide="printer" class="w-4 h-4 text-blue-600"></i>
+                            <div>
+                                <div class="font-semibold">Print / Save PDF</div>
+                                <div class="text-[10px] text-slate-400">Dialog cetak standar browser</div>
+                            </div>
+                        </button>
+                        <button onclick="exportToPDF(); toggleExportMenu(false);" class="w-full px-4 py-2.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-rose-50 hover:text-rose-700 flex items-center gap-2.5 transition border-t border-slate-100">
+                            <i data-lucide="file-down" class="w-4 h-4 text-rose-600"></i>
+                            <div>
+                                <div class="font-semibold">Download PDF (.pdf)</div>
+                                <div class="text-[10px] text-slate-400">Langsung unduh file A4 PDF</div>
+                            </div>
+                        </button>
+                        <button onclick="exportToJPG(); toggleExportMenu(false);" class="w-full px-4 py-2.5 text-left text-xs sm:text-sm text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2.5 transition border-t border-slate-100">
+                            <i data-lucide="image" class="w-4 h-4 text-emerald-600"></i>
+                            <div>
+                                <div class="font-semibold">Download Gambar (.jpg)</div>
+                                <div class="text-[10px] text-slate-400">Praktis dikirim via WhatsApp</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- KOLOM KIRI: PANEL EDITOR / INPUT (5 Kolom di Desktop) -->
+            <div id="editor-panel" class="lg:col-span-5 space-y-5 no-print">
+                
+                <!-- Tab Navigasi Form -->
+                <div class="bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm grid grid-cols-4 gap-1">
+                    <button onclick="switchTab('transaksi')" id="tab-btn-transaksi" class="tab-btn py-2 px-2 rounded-lg text-[11px] sm:text-xs font-semibold bg-blue-50 text-blue-700 transition flex items-center justify-center gap-1">
+                        <i data-lucide="receipt" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span>Transaksi</span>
+                    </button>
+                    <button onclick="switchTab('perusahaan')" id="tab-btn-perusahaan" class="tab-btn py-2 px-2 rounded-lg text-[11px] sm:text-xs font-medium text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-1">
+                        <i data-lucide="building-2" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span>Profil PT</span>
+                    </button>
+                    <button onclick="switchTab('pembayaran')" id="tab-btn-pembayaran" class="tab-btn py-2 px-2 rounded-lg text-[11px] sm:text-xs font-medium text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-1">
+                        <i data-lucide="wallet" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span>DP &amp; Catatan</span>
+                    </button>
+                    <button onclick="switchTab('riwayat')" id="tab-btn-riwayat" class="tab-btn py-2 px-2 rounded-lg text-[11px] sm:text-xs font-medium text-slate-600 hover:bg-slate-50 transition flex items-center justify-center gap-1 relative">
+                        <i data-lucide="history" class="w-3.5 h-3.5 shrink-0"></i>
+                        <span>Riwayat</span>
+                        <span id="history-count-badge" class="ml-0.5 px-1.5 py-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full">0</span>
+                    </button>
+                </div>
+
+                <!-- TAB 1: TRANSAKSI & CUSTOMER -->
+                <div id="tab-content-transaksi" class="space-y-5">
+                    <!-- Detail Invoice -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="font-display font-bold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="hash" class="w-4 h-4 text-blue-600"></i> Detail Invoice
+                            </h2>
+                            <button onclick="generateAutoInvoiceNumber(true)" class="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-2.5 py-1 rounded-md transition">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Generate Otomatis
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Nomor Invoice</label>
+                                <input type="text" id="in-inv-number" oninput="updatePreview()" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none font-mono font-semibold text-slate-800">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Tanggal Invoice</label>
+                                <input type="date" id="in-inv-date" onchange="updatePreview()" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Customer -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h2 class="font-display font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                            <i data-lucide="user" class="w-4 h-4 text-blue-600"></i> Data Penyewa / Customer
+                        </h2>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Nama Customer / Instansi</label>
+                                <input type="text" id="in-cust-name" placeholder="Contoh: Bpk. Budi Santoso / PT Maju Jaya" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Nomor Telepon / WhatsApp</label>
+                                <input type="text" id="in-cust-phone" placeholder="Contoh: 0812-3456-7890" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Alamat Customer / Penjemputan</label>
+                                <textarea id="in-cust-address" rows="2" placeholder="Masukkan alamat lengkap customer..." oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Item Sewa Armada / Paket Wisata -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="font-display font-bold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="list-checks" class="w-4 h-4 text-blue-600"></i> Item Sewa & Perjalanan
+                            </h2>
+                            <button onclick="addItemRow()" class="inline-flex items-center gap-1 text-xs font-semibold bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition shadow-sm">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tambah Baris
+                            </button>
+                        </div>
+
+                        <div id="items-editor-list" class="space-y-3">
+                            <!-- Baris item akan dirender secara dinamis melalui JavaScript -->
+                        </div>
+
+                        <!-- Tombol Simpan Invoice ke Riwayat POS -->
+                        <div class="pt-3 border-t border-slate-100">
+                            <button type="button" onclick="saveInvoiceToHistory()" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm shadow-sm flex items-center justify-center gap-2 transition">
+                                <i data-lucide="bookmark-check" class="w-4 h-4"></i>
+                                <span>Simpan Invoice ke Riwayat Data</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: PROFIL PERUSAHAAN (CUSTOMIZE) -->
+                <div id="tab-content-perusahaan" class="hidden space-y-5">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="font-display font-bold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="image" class="w-4 h-4 text-blue-600"></i> Logo & Identitas PT
+                            </h2>
+                            <button onclick="removeLogo()" id="btn-remove-logo" class="hidden text-xs text-rose-600 hover:underline font-medium">Hapus Logo</button>
+                        </div>
+
+                        <!-- Upload Logo -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1.5">Unggah Logo Perusahaan (PNG/JPG/SVG)</label>
+                            <div class="flex items-center gap-3">
+                                <label class="flex-1 cursor-pointer flex items-center justify-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition text-sm text-slate-600">
+                                    <i data-lucide="upload-cloud" class="w-5 h-5 text-blue-600"></i>
+                                    <span>Pilih File Logo...</span>
+                                    <input type="file" id="in-logo-file" accept="image/*" onchange="handleLogoUpload(event)" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Nama PT / Perusahaan Transwisata</label>
+                            <input type="text" id="in-comp-name" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-semibold">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Tagline / Sub-judul (Opsional)</label>
+                            <input type="text" id="in-comp-tagline" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+
+                    <!-- 2 Alamat Perusahaan -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h2 class="font-display font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                            <i data-lucide="map-pin" class="w-4 h-4 text-blue-600"></i> Pengaturan 2 Alamat
+                        </h2>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <label class="text-xs font-medium text-slate-600">Label Alamat 1</label>
+                                    <input type="text" id="in-addr1-label" oninput="updatePreview()" class="text-xs text-right font-semibold text-blue-600 border-b border-dashed border-slate-300 focus:outline-none w-32" value="Kantor Pusat:">
+                                </div>
+                                <textarea id="in-comp-addr1" rows="2" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <label class="text-xs font-medium text-slate-600">Label Alamat 2 (Pool / Cabang)</label>
+                                    <input type="text" id="in-addr2-label" oninput="updatePreview()" class="text-xs text-right font-semibold text-blue-600 border-b border-dashed border-slate-300 focus:outline-none w-32" value="Pool Armada:">
+                                </div>
+                                <textarea id="in-comp-addr2" rows="2" placeholder="Kosongkan jika hanya 1 alamat" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kontak & Sosial Media -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h2 class="font-display font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                            <i data-lucide="share-2" class="w-4 h-4 text-blue-600"></i> Kontak & Sosial Media
+                        </h2>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Nomor WhatsApp</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-emerald-600">
+                                        <i data-lucide="phone" class="w-4 h-4"></i>
+                                    </span>
+                                    <input type="text" id="in-comp-wa" oninput="updatePreview()" class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Instagram</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-pink-600">
+                                        <i data-lucide="instagram" class="w-4 h-4"></i>
+                                    </span>
+                                    <input type="text" id="in-comp-ig" oninput="updatePreview()" class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Email Perusahaan</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-blue-600">
+                                        <i data-lucide="mail" class="w-4 h-4"></i>
+                                    </span>
+                                    <input type="email" id="in-comp-email" oninput="updatePreview()" class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: PEMBAYARAN (DP / LUNAS) & NOTES -->
+                <div id="tab-content-pembayaran" class="hidden space-y-5">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h2 class="font-display font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                            <i data-lucide="credit-card" class="w-4 h-4 text-blue-600"></i> Status Pembayaran & DP
+                        </h2>
+
+                        <!-- Status Lunas / DP / Belum Bayar -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Status Pembayaran</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="setPaymentStatus('UNPAID')" id="status-btn-UNPAID" class="status-btn py-2 px-2 rounded-lg border text-xs font-semibold transition">
+                                    Belum Bayar
+                                </button>
+                                <button type="button" onclick="setPaymentStatus('DP')" id="status-btn-DP" class="status-btn py-2 px-2 rounded-lg border text-xs font-semibold transition">
+                                    DP (Uang Muka)
+                                </button>
+                                <button type="button" onclick="setPaymentStatus('LUNAS')" id="status-btn-LUNAS" class="status-btn py-2 px-2 rounded-lg border text-xs font-semibold transition">
+                                    LUNAS
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Input Nominal DP -->
+                        <div id="dp-input-wrapper">
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-medium text-slate-600">Nominal DP / Sudah Dibayar (Rp)</label>
+                                <button type="button" onclick="setFullPayment()" class="text-xs text-blue-600 hover:underline font-medium">Samakan dengan Grand Total</button>
+                            </div>
+                            <input type="number" id="in-dp-amount" min="0" step="10000" oninput="onDpInput()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-semibold text-slate-800">
+                        </div>
+
+                        <!-- Info Rekening Pembayaran -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Informasi Rekening Bank (Tampil di Invoice)</label>
+                            <textarea id="in-bank-info" rows="2" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                        </div>
+
+                        <!-- Opsi Tampilan Cap / Stamp -->
+                        <div class="pt-3 border-t border-slate-100 space-y-2.5">
+                            <label class="block text-xs font-medium text-slate-600">Model Cap / Stempel (Berlaku untuk Semua Status)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" onclick="setLunasStampType('TEXT')" id="stamp-type-btn-TEXT" class="py-2 px-2.5 rounded-lg border border-blue-600 bg-blue-50 text-blue-700 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                                    <i data-lucide="type" class="w-3.5 h-3.5"></i>
+                                    <span>Teks Status Saja</span>
+                                </button>
+                                <button type="button" onclick="setLunasStampType('IMAGE')" id="stamp-type-btn-IMAGE" class="py-2 px-2.5 rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold transition flex items-center justify-center gap-1.5">
+                                    <i data-lucide="stamp" class="w-3.5 h-3.5"></i>
+                                    <span>Stempel PNG Kustom</span>
+                                </button>
+                            </div>
+
+                            <!-- Upload Custom Stamp PNG -->
+                            <div id="custom-stamp-upload-wrap" class="hidden pt-1 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-medium text-slate-500">Unggah File Stempel (.PNG Transparan)</span>
+                                    <button type="button" onclick="removeCustomStamp()" id="btn-remove-stamp" class="hidden text-[11px] text-rose-600 hover:underline font-semibold">Hapus Stempel</button>
+                                </div>
+                                <label class="cursor-pointer flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition text-xs text-slate-600">
+                                    <i data-lucide="upload-cloud" class="w-4 h-4 text-blue-600"></i>
+                                    <span>Pilih Gambar Stempel PNG...</span>
+                                    <input type="file" id="in-stamp-file" accept="image/png,image/webp,image/*" onchange="handleStampUpload(event)" class="hidden">
+                                </label>
+                                <div id="stamp-thumb-preview-wrap" class="hidden flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 border border-slate-200">
+                                    <img id="stamp-thumb-preview" src="" alt="Preview Stempel" class="h-10 w-auto object-contain">
+                                    <span class="text-[11px] text-emerald-700 font-medium">Stempel kustom aktif untuk semua status</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customize Notes & Tanda Tangan -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h2 class="font-display font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+                            <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i> Notes & Otorisasi
+                        </h2>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Catatan / Syarat &amp; Ketentuan</label>
+                            <textarea id="in-notes" rows="4" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Kota Tanda Tangan</label>
+                                <input type="text" id="in-sign-city" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Nama Admin / Direktur</label>
+                                <input type="text" id="in-sign-name" oninput="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Backup & Restore Database Lokal (.JSON) -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="font-display font-bold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="database" class="w-4 h-4 text-blue-600"></i> Penyimpanan Data Lokal (.JSON)
+                            </h2>
+                            <span class="text-[10px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">Auto-Save Aktif</span>
+                        </div>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            Simpan seluruh data invoice ini (profil PT, logo, customer, & daftar armada) ke file <b>.json</b> di HP/PC Anda, atau muat kembali file JSON yang pernah disimpan.
+                        </p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <button type="button" onclick="downloadJsonBackup()" class="inline-flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold rounded-xl bg-slate-800 text-white hover:bg-slate-900 transition shadow-sm">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                                <span>Simpan File .JSON</span>
+                            </button>
+                            <label class="cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100 transition">
+                                <i data-lucide="upload" class="w-4 h-4 text-blue-600"></i>
+                                <span>Muat File .JSON</span>
+                                <input type="file" id="in-json-file" accept=".json,application/json" onchange="uploadJsonBackup(event)" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 4: RIWAYAT DATA INVOICE (MINI POS) -->
+                <div id="tab-content-riwayat" class="hidden space-y-4">
+                    <!-- Ringkasan Statistik POS -->
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                            <p class="text-[10px] font-semibold uppercase text-slate-400">Total Transaksi</p>
+                            <p id="pos-stat-count" class="font-display font-extrabold text-base sm:text-lg text-slate-800 mt-0.5">0</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                            <p class="text-[10px] font-semibold uppercase text-emerald-600">Sudah Masuk</p>
+                            <p id="pos-stat-paid" class="font-display font-extrabold text-xs sm:text-sm text-emerald-700 mt-1 truncate">Rp 0</p>
+                        </div>
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                            <p class="text-[10px] font-semibold uppercase text-rose-500">Sisa Piutang</p>
+                            <p id="pos-stat-unpaid" class="font-display font-extrabold text-xs sm:text-sm text-rose-600 mt-1 truncate">Rp 0</p>
+                        </div>
+                    </div>
+
+                    <!-- Filter, Pencarian & Backup Semua Riwayat -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h2 class="font-display font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i data-lucide="folder-kanban" class="w-4 h-4 text-blue-600"></i> Daftar Invoice Tersimpan
+                            </h2>
+                            <button type="button" onclick="saveInvoiceToHistory()" class="text-xs font-semibold bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-emerald-700 transition flex items-center gap-1">
+                                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Simpan Aktif
+                            </button>
+                        </div>
+
+                        <!-- Search Input -->
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                                <i data-lucide="search" class="w-4 h-4"></i>
+                            </span>
+                            <input type="text" id="pos-search-input" oninput="renderHistoryList()" placeholder="Cari nomor invoice, nama customer, armada..." class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+
+                        <!-- Filter Status Pills -->
+                        <div class="flex flex-wrap gap-1.5">
+                            <button type="button" onclick="setHistoryFilter('ALL')" id="hist-filter-ALL" class="hist-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-white transition">Semua</button>
+                            <button type="button" onclick="setHistoryFilter('LUNAS')" id="hist-filter-LUNAS" class="hist-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Lunas</button>
+                            <button type="button" onclick="setHistoryFilter('DP')" id="hist-filter-DP" class="hist-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition">DP</button>
+                            <button type="button" onclick="setHistoryFilter('UNPAID')" id="hist-filter-UNPAID" class="hist-filter-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Belum Bayar</button>
+                        </div>
+
+                        <!-- List Transaksi -->
+                        <div id="pos-history-list" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                            <!-- Item riwayat dirender lewat JS -->
+                        </div>
+
+                        <!-- Export / Import Seluruh Database POS (.JSON) -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <button type="button" onclick="exportAllHistoryJson()" class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> Backup Semua (.JSON)
+                            </button>
+                            <label class="flex-1 cursor-pointer inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+                                <i data-lucide="upload" class="w-3.5 h-3.5 text-blue-600"></i> Restore (.JSON)
+                                <input type="file" accept=".json,application/json" onchange="importAllHistoryJson(event)" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- KOLOM KANAN: LIVE PREVIEW KERTAS INVOICE (7 Kolom di Desktop) -->
+            <div id="preview-panel" class="lg:col-span-7 print-only-container">
+                <div class="bg-slate-200/70 p-2 sm:p-5 rounded-2xl border border-slate-300/70 shadow-inner">
+                    
+                    <!-- Kertas Invoice A4 -->
+                    <div id="invoice-paper-target" class="invoice-paper bg-white rounded-xl shadow-lg border border-slate-200 p-5 sm:p-8 md:p-10 relative overflow-hidden">
+
+                        <!-- Header Kertas Invoice -->
+                        <div id="prev-header-row" class="flex flex-col sm:flex-row justify-between items-start gap-4 pb-6 border-b-2 border-slate-800">
+                            <!-- Kiri: Logo & Info PT -->
+                            <div class="flex items-start gap-3.5 max-w-md">
+                                <div class="shrink-0">
+                                    <img id="prev-logo-img" src="" alt="Logo Perusahaan" class="hidden w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-xl border border-slate-100 p-1 bg-white">
+                                    <div id="prev-logo-placeholder" class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center shadow-sm">
+                                        <i data-lucide="bus" class="w-8 h-8"></i>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <h2 id="prev-comp-name" class="font-display font-extrabold text-base sm:text-xl text-slate-900 tracking-tight leading-snug">PT. NUSANTARA TRANSWISATA</h2>
+                                    <p id="prev-comp-tagline" class="text-[11px] sm:text-xs font-medium text-blue-700">Layanan Sewa Bus Pariwisata, Hiace & Paket Tour Profesional</p>
+                                    
+                                    <!-- 2 Alamat -->
+                                    <div class="pt-1 space-y-1 text-[11px] text-slate-600 leading-relaxed">
+                                        <p id="prev-addr1-wrap">
+                                            <span id="prev-addr1-label" class="font-semibold text-slate-800">Kantor Pusat:</span>
+                                            <span id="prev-comp-addr1"></span>
+                                        </p>
+                                        <p id="prev-addr2-wrap">
+                                            <span id="prev-addr2-label" class="font-semibold text-slate-800">Pool Armada:</span>
+                                            <span id="prev-comp-addr2"></span>
+                                        </p>
+                                    </div>
+
+                                    <!-- Kontak WA, IG, Email -->
+                                    <div id="prev-contact-row" class="pt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-600">
+                                        <span id="prev-wa-wrap" class="inline-flex items-center gap-1">
+                                            <i data-lucide="phone" class="w-3 h-3 text-emerald-600 shrink-0"></i>
+                                            <span id="prev-comp-wa"></span>
+                                        </span>
+                                        <span id="prev-ig-wrap" class="inline-flex items-center gap-1">
+                                            <i data-lucide="instagram" class="w-3 h-3 text-pink-600 shrink-0"></i>
+                                            <span id="prev-comp-ig"></span>
+                                        </span>
+                                        <span id="prev-email-wrap" class="inline-flex items-center gap-1">
+                                            <i data-lucide="mail" class="w-3 h-3 text-blue-600 shrink-0"></i>
+                                            <span id="prev-comp-email"></span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Kanan: Judul INVOICE & Nomor -->
+                            <div class="sm:text-right w-full sm:w-auto flex sm:flex-col justify-between items-end sm:items-end border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100 shrink-0">
+                                <div>
+                                    <h1 class="font-display font-extrabold text-2xl sm:text-3xl tracking-wider text-blue-700 uppercase leading-none">INVOICE</h1>
+                                    <div class="mt-2">
+                                        <span id="prev-status-badge" class="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-200 leading-none">
+                                            DP / UANG MUKA
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="mt-2 sm:mt-4 text-xs space-y-1 text-right">
+                                    <div>
+                                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Nomor Invoice</span>
+                                        <span id="prev-inv-number" class="font-mono font-bold text-slate-900 text-xs sm:text-sm">INV/TW/202611/001</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-400 block text-[10px] uppercase font-semibold">Tanggal Terbit</span>
+                                        <span id="prev-inv-date" class="font-semibold text-slate-700">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Data Penerima / Customer -->
+                        <div id="prev-cust-bank-grid" class="py-5 grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-slate-200">
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200/70">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Ditagihkan kepada</span>
+                                <h3 id="prev-cust-name" class="font-display font-bold text-sm sm:text-base text-slate-900">-</h3>
+                                <p id="prev-cust-phone" class="text-xs font-medium text-blue-700 mt-0.5">-</p>
+                                <p id="prev-cust-address" class="text-xs text-slate-600 mt-1 leading-relaxed">-</p>
+                            </div>
+                            <div id="prev-bank-wrap" class="bg-blue-50/50 p-3.5 rounded-xl border border-blue-100">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-blue-700 block mb-1">Metode & Rekening Pembayaran:</span>
+                                <p id="prev-bank-info" class="text-xs text-slate-700 whitespace-pre-line leading-relaxed font-medium"></p>
+                            </div>
+                        </div>
+
+                        <!-- Tabel Item Sewa -->
+                        <div class="py-5">
+                            <div class="overflow-x-auto rounded-xl border border-slate-200">
+                                <table id="prev-items-table" class="w-full text-left border-collapse text-xs sm:text-sm">
+                                    <thead>
+                                        <tr class="bg-slate-800 text-white text-[11px] uppercase tracking-wider">
+                                            <th class="py-2.5 px-2 sm:px-3 text-center w-12">Qty</th>
+                                            <th class="py-2.5 px-2 sm:px-3">Deskripsi Armada / Paket</th>
+                                            <th class="py-2.5 px-2 sm:px-3 text-center w-20">Hari</th>
+                                            <th class="py-2.5 px-2 sm:px-3 text-right">Harga / Hari</th>
+                                            <th class="py-2.5 px-2 sm:px-3 text-right">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="prev-items-tbody" class="divide-y divide-slate-200 bg-white">
+                                        <!-- Baris item dirender oleh JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Ringkasan Total, DP & Sisa Tagihan -->
+                        <div id="prev-summary-wrap" class="flex justify-end pb-6 border-b border-slate-200">
+                            <div id="prev-summary-box" class="w-full sm:w-80 space-y-2 text-xs sm:text-sm">
+                                <div class="flex justify-between items-center text-slate-600 px-1">
+                                    <span>Subtotal</span>
+                                    <span id="prev-subtotal" class="font-semibold text-slate-800">Rp 0</span>
+                                </div>
+                                <div id="prev-grandtotal-box" class="flex justify-between items-center py-2 px-3 rounded-lg bg-slate-100 font-display font-extrabold text-slate-900 text-sm sm:text-base">
+                                    <span>GRAND TOTAL</span>
+                                    <span id="prev-grand-total" class="text-blue-700">Rp 0</span>
+                                </div>
+                                <div id="prev-dp-row" class="flex justify-between items-center text-emerald-700 font-medium px-1">
+                                    <span>DP / Telah Dibayar</span>
+                                    <span id="prev-dp-amount">- Rp 0</span>
+                                </div>
+                                <div id="prev-balance-row" class="flex justify-between items-center pt-2 border-t border-dashed border-slate-300 px-1 text-sm sm:text-base">
+                                    <span class="font-bold text-slate-800">Sisa Tagihan</span>
+                                    <span id="prev-balance-due" class="font-extrabold text-rose-600">Rp 0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer: Notes & Tanda Tangan -->
+                        <div id="prev-footer-grid" class="pt-5 grid grid-cols-1 sm:grid-cols-12 gap-6 items-end">
+                            <div id="prev-notes-wrap" class="sm:col-span-7">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Catatan / Syarat & Ketentuan:</span>
+                                <p id="prev-notes" class="text-[11px] text-slate-600 whitespace-pre-line leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100"></p>
+                            </div>
+                            <div id="prev-sign-col" class="sm:col-span-5 text-center sm:text-right flex flex-col items-center sm:items-end justify-end">
+                                <p class="text-xs text-slate-600">
+                                    <span id="prev-sign-city">Yogyakarta</span>, <span id="prev-sign-date">-</span>
+                                </p>
+                                <p id="prev-sign-comp" class="text-[11px] font-semibold text-slate-800 mt-0.5">PT. NUSANTARA TRANSWISATA</p>
+
+                                <!-- Area Cap Status (Teks Saja Tanpa Frame atau Custom Stamp PNG) untuk semua status -->
+                                <div class="h-20 w-full flex items-center justify-center sm:justify-end relative">
+                                    <span id="prev-lunas-stamp" class="pointer-events-none select-none -rotate-12 text-amber-600/45 font-display font-extrabold text-2xl sm:text-3xl tracking-[0.15em] uppercase pr-2">
+                                        DP
+                                    </span>
+                                    <img id="prev-lunas-stamp-img" src="" alt="Stempel Kustom" class="hidden pointer-events-none select-none max-h-20 max-w-[170px] object-contain">
+                                </div>
+
+                                <div id="prev-sign-line" class="inline-block border-b border-slate-800 pb-1.5 px-4">
+                                    <p id="prev-sign-name" class="font-display font-bold text-xs sm:text-sm text-slate-900 leading-normal">Admin Reservasi</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script src="app.js"></script>
+    
+</body>
+</html>
